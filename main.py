@@ -12,7 +12,6 @@ from src import CrackDataset, DiceCrossEntropyLoss, DiceLoss, FocalLoss, UNet
 class UNetLightning(pl.LightningModule):
     def __init__(
         self,
-        num_classes=1,
         ce_weight=1.0,
         dice_weight=1.0,
         focal_weight=1.0,
@@ -56,15 +55,20 @@ class UNetLightning(pl.LightningModule):
 
         # LOSS
         ce_loss = self.loss_function(outputs, targets)
+
+        num_classes = outputs.shape[1]
+        targets = torch.clamp(targets.long(), 0, num_classes - 1)
+
         dice_loss = DiceLoss()(
             F.softmax(outputs, dim=1),
-            F.one_hot(targets.long(), num_classes=outputs.shape[1]),
+            # F.one_hot(targets.long(), num_classes=outputs.shape[1]).permute(0, 3, 1, 2),
+            F.one_hot(targets, num_classes=num_classes),
         )
         focal_loss = self.focal_loss_function(outputs, targets)
 
         total_loss = (
             (self.ce_weight * ce_loss)
-            + (self.dice_weight * dice_loss)
+            (self.dice_weight * dice_loss)
             + (self.focal_weight * focal_loss)
         )
 
@@ -77,12 +81,11 @@ class UNetLightning(pl.LightningModule):
         outputs = self(inputs)
 
         # Calculate the validation loss (if needed)
-        val_loss = self.loss_function(outputs, targets)
+        val_loss = self.focal_loss_function(outputs, targets)
 
         # Log the validation loss and IoU for the batch
         self.log("val_loss", val_loss)  # Log the validation loss
         return val_loss
-
 
 
 if __name__ == "__main__":
@@ -90,10 +93,10 @@ if __name__ == "__main__":
     train_dataset = CrackDataset(root_dir="data/train", image_size=448)
     test_dataset = CrackDataset(root_dir="data/test", image_size=448)
     train_dataloader = DataLoader(
-        train_dataset, batch_size=2, num_workers=8, shuffle=True, pin_memory=True
+        train_dataset, batch_size=4, num_workers=8, shuffle=True, pin_memory=True
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=1, num_workers=8, shuffle=False, pin_memory=True
+        test_dataset, batch_size=2, num_workers=8, shuffle=False, pin_memory=True
     )
     # ====================================
 
@@ -110,7 +113,6 @@ if __name__ == "__main__":
 
     # =============LIGHTING===============
     model = UNetLightning(
-        num_classes=1,
         ce_weight=1.0,
         dice_weight=1.0,
         focal_weight=1.0,
