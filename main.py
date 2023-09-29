@@ -19,7 +19,7 @@ class UNetLightning(pl.LightningModule):
         max_epochs=50,
     ):
         super().__init__()
-        self.model = UNet(in_channels=3, out_channels=2)  # Initialize your U-Net model
+        self.model = UNet(in_channels=3, out_channels=1)  # Initialize your U-Net model
         self.ce_weight = ce_weight
         self.dice_weight = dice_weight
         self.focal_weight = focal_weight
@@ -59,7 +59,7 @@ class UNetLightning(pl.LightningModule):
         # LOSS
         ce_loss = self.loss_function(outputs, targets)
         dice_loss = DiceLoss()(
-            F.softmax(outputs, dim=1), F.one_hot(targets, num_classes=outputs.shape[1])
+            F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1])
         )
         focal_loss = self.focal_loss_function(outputs, targets)
 
@@ -73,7 +73,7 @@ class UNetLightning(pl.LightningModule):
 
         # IoU
         batch_iou = self.iou_metric.calculate_iou(
-            F.softmax(outputs, dim=1), F.one_hot(targets, num_classes=outputs.shape[1])
+            F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1])
         )
         self.log("train_iou", batch_iou, on_step=True, on_epoch=False)
 
@@ -87,7 +87,7 @@ class UNetLightning(pl.LightningModule):
         val_loss = self.loss_function(outputs, targets)
         
         # Calculate IoU for the current batch (if needed)
-        batch_iou = self.iou_metric.calculate_iou(F.softmax(outputs, dim=1), F.one_hot(targets, num_classes=outputs.shape[1]))
+        batch_iou = self.iou_metric.calculate_iou(F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1]))
 
         # Log the validation loss and IoU for the batch
         self.log('val_loss', val_loss)  # Log the validation loss
