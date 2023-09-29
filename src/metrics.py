@@ -1,5 +1,5 @@
-import torchmetrics
 import torch
+import torchmetrics
 
 
 class IoU(torchmetrics.Metric):

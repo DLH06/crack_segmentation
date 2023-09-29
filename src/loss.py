@@ -26,7 +26,8 @@ class DiceCrossEntropyLoss(nn.Module):
     def forward(self, logits, targets):
         ce_loss = self.ce_loss(logits, targets)
         dice_loss = self.dice_loss(
-            F.softmax(logits, dim=1), F.one_hot(targets.long(), num_classes=logits.shape[1])
+            F.softmax(logits, dim=1),
+            F.one_hot(targets.long(), num_classes=logits.shape[1]),
         )
         return (self.ce_weight * ce_loss) + (self.dice_weight * dice_loss)
 

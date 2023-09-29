@@ -1,17 +1,18 @@
 import pytorch_lightning as pl
+import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 
-from src import CrackDataset, DiceCrossEntropyLoss, DiceLoss, FocalLoss, IoU, UNet
+from src import CrackDataset, DiceCrossEntropyLoss, DiceLoss, FocalLoss, UNet
 
 
 class UNetLightning(pl.LightningModule):
     def __init__(
         self,
-        num_classes=2,
+        num_classes=1,
         ce_weight=1.0,
         dice_weight=1.0,
         focal_weight=1.0,
@@ -29,9 +30,6 @@ class UNetLightning(pl.LightningModule):
         self.focal_loss_function = FocalLoss(alpha=1, gamma=2)
         self.learning_rate = learning_rate
         self.max_epochs = max_epochs
-        self.iou_metric = IoU(
-            num_classes=num_classes
-        )  # Create an instance of the IoU metric
 
     def forward(self, x):
         return self.model(x)
@@ -59,7 +57,8 @@ class UNetLightning(pl.LightningModule):
         # LOSS
         ce_loss = self.loss_function(outputs, targets)
         dice_loss = DiceLoss()(
-            F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1])
+            F.softmax(outputs, dim=1),
+            F.one_hot(targets.long(), num_classes=outputs.shape[1]),
         )
         focal_loss = self.focal_loss_function(outputs, targets)
 
@@ -71,27 +70,19 @@ class UNetLightning(pl.LightningModule):
 
         self.log("train_loss", total_loss)
 
-        # IoU
-        batch_iou = self.iou_metric.calculate_iou(
-            F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1])
-        )
-        self.log("train_iou", batch_iou, on_step=True, on_epoch=False)
-
         return total_loss
 
     def validation_step(self, batch, batch_idx):
         inputs, targets = batch
         outputs = self(inputs)
-        
+
         # Calculate the validation loss (if needed)
         val_loss = self.loss_function(outputs, targets)
-        
-        # Calculate IoU for the current batch (if needed)
-        batch_iou = self.iou_metric.calculate_iou(F.softmax(outputs, dim=1), F.one_hot(targets.long(), num_classes=outputs.shape[1]))
 
         # Log the validation loss and IoU for the batch
-        self.log('val_loss', val_loss)  # Log the validation loss
-        self.log('val_iou', batch_iou, on_step=False, on_epoch=True)  # Log IoU for the batch and aggregate over the epoch
+        self.log("val_loss", val_loss)  # Log the validation loss
+        return val_loss
+
 
 
 if __name__ == "__main__":
@@ -99,10 +90,10 @@ if __name__ == "__main__":
     train_dataset = CrackDataset(root_dir="data/train", image_size=448)
     test_dataset = CrackDataset(root_dir="data/test", image_size=448)
     train_dataloader = DataLoader(
-        train_dataset, batch_size=16, num_workers=8, shuffle=True, pin_memory=True
+        train_dataset, batch_size=2, num_workers=8, shuffle=True, pin_memory=True
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=8, num_workers=8, shuffle=False, pin_memory=True
+        test_dataset, batch_size=1, num_workers=8, shuffle=False, pin_memory=True
     )
     # ====================================
 
@@ -119,7 +110,7 @@ if __name__ == "__main__":
 
     # =============LIGHTING===============
     model = UNetLightning(
-        num_classes=2,
+        num_classes=1,
         ce_weight=1.0,
         dice_weight=1.0,
         focal_weight=1.0,
