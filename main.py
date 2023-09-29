@@ -79,6 +79,20 @@ class UNetLightning(pl.LightningModule):
 
         return total_loss
 
+    def validation_step(self, batch, batch_idx):
+        inputs, targets = batch
+        outputs = self(inputs)
+        
+        # Calculate the validation loss (if needed)
+        val_loss = self.loss_function(outputs, targets)
+        
+        # Calculate IoU for the current batch (if needed)
+        batch_iou = self.iou_metric.calculate_iou(F.softmax(outputs, dim=1), F.one_hot(targets, num_classes=outputs.shape[1]))
+
+        # Log the validation loss and IoU for the batch
+        self.log('val_loss', val_loss)  # Log the validation loss
+        self.log('val_iou', batch_iou, on_step=False, on_epoch=True)  # Log IoU for the batch and aggregate over the epoch
+
 
 if __name__ == "__main__":
     # ============DATALOADER==============
