@@ -55,23 +55,22 @@ class UNetLightning(pl.LightningModule):
         outputs = self(inputs)
 
         # Calculate the validation loss (if needed)
-        val_loss = self.loss_function(outputs, targets)
+        val_loss = self.focal_loss_function(outputs, targets)
 
         # Log the validation loss and IoU for the batch
         self.log("val_loss", val_loss)  # Log the validation loss
         return val_loss
 
 
-
 if __name__ == "__main__":
     # ============DATALOADER==============
-    train_dataset = CrackDataset(root_dir="data/train", image_size=448)
-    test_dataset = CrackDataset(root_dir="data/test", image_size=448)
+    train_dataset = CrackDataset(root_dir="data/new_crack/train", image_size=448)
+    test_dataset = CrackDataset(root_dir="data/new_crack/test", image_size=448)
     train_dataloader = DataLoader(
-        train_dataset, batch_size=2, num_workers=8, shuffle=True, pin_memory=True
+        train_dataset, batch_size=4, num_workers=8, shuffle=True, pin_memory=True
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=1, num_workers=8, shuffle=False, pin_memory=True
+        test_dataset, batch_size=2, num_workers=8, shuffle=False, pin_memory=True
     )
     # ====================================
 
