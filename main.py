@@ -1,33 +1,22 @@
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 
-from src import CrackDataset, DiceCrossEntropyLoss, DiceLoss, FocalLoss, UNet
+from src import CrackDataset, UNet
 
 
 class UNetLightning(pl.LightningModule):
     def __init__(
         self,
-        num_classes=1,
-        ce_weight=1.0,
-        dice_weight=1.0,
-        focal_weight=1.0,
         learning_rate=1e-3,
         max_epochs=50,
     ):
         super().__init__()
         self.model = UNet(in_channels=3, out_channels=1)  # Initialize your U-Net model
-        self.ce_weight = ce_weight
-        self.dice_weight = dice_weight
-        self.focal_weight = focal_weight
-        self.loss_function = DiceCrossEntropyLoss(
-            ce_weight=self.ce_weight, dice_weight=self.dice_weight
-        )
-        self.focal_loss_function = FocalLoss(alpha=1, gamma=2)
+        self.loss_function = torch.nn.BCELoss()
         self.learning_rate = learning_rate
         self.max_epochs = max_epochs
 
@@ -55,18 +44,7 @@ class UNetLightning(pl.LightningModule):
         outputs = self(inputs)
 
         # LOSS
-        ce_loss = self.loss_function(outputs, targets)
-        dice_loss = DiceLoss()(
-            F.softmax(outputs, dim=1),
-            F.one_hot(targets.long(), num_classes=outputs.shape[1]),
-        )
-        focal_loss = self.focal_loss_function(outputs, targets)
-
-        total_loss = (
-            (self.ce_weight * ce_loss)
-            + (self.dice_weight * dice_loss)
-            + (self.focal_weight * focal_loss)
-        )
+        total_loss = self.loss_function(outputs, targets)
 
         self.log("train_loss", total_loss)
 
@@ -100,20 +78,14 @@ if __name__ == "__main__":
     # =============CALLBACKS==============
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints/",  # Directory to save checkpoints
-        filename="{epoch}-{val_loss:.4f}",  # Naming pattern for checkpoints
-        monitor="val_loss",  # Metric to monitor (e.g., validation loss)
-        save_top_k=3,  # Number of best checkpoints to keep
-        mode="min",  # 'min' or 'max' depending on the monitored metric
+        filename="{epoch}-{train_loss:.4f}-{val_loss:.4f}",  # Naming pattern for checkpoints
+        save_top_k=-1,  # Number of best checkpoints to keep
         verbose=True,  # Print messages about checkpoint saving
     )
     # ====================================
 
     # =============LIGHTING===============
     model = UNetLightning(
-        num_classes=1,
-        ce_weight=1.0,
-        dice_weight=1.0,
-        focal_weight=1.0,
         learning_rate=1e-3,
         max_epochs=50,
     )

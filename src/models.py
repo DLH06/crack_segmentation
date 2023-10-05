@@ -154,6 +154,7 @@ class UNet(nn.Module):
         self.output_conv = nn.Conv2d(
             in_channels=64, out_channels=out_channels, kernel_size=1
         )
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x0 = self.input_conv(x)
@@ -169,5 +170,6 @@ class UNet(nn.Module):
         x_ = self.up4(x_, x0)
 
         x_ = self.output_conv(x_)
+        x_ = self.sigmoid(x_)
 
         return x_
