@@ -55,7 +55,7 @@ class UNetLightning(pl.LightningModule):
         outputs = self(inputs)
 
         # Calculate the validation loss (if needed)
-        val_loss = self.focal_loss_function(outputs, targets)
+        val_loss = self.loss_function(outputs, targets)
 
         # Log the validation loss and IoU for the batch
         self.log("val_loss", val_loss)  # Log the validation loss
