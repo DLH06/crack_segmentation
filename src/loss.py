@@ -31,7 +31,7 @@ class DiceCrossEntropyLoss(nn.Module):
         dice_loss = self.dice_loss(
             F.softmax(logits, dim=1),
             # F.one_hot(targets.long(), num_classes=logits.shape[1]),
-            F.one_hot(targets, num_classes=logits.shape[1])
+            F.one_hot(targets, num_classes=logits.shape[1]),
         )
         return (self.ce_weight * ce_loss) + (self.dice_weight * dice_loss)
 
@@ -43,7 +43,9 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
 
     def forward(self, logits, targets):
-        bce_loss = F.binary_cross_entropy_with_logits(logits, targets.float(), reduction="none")
+        bce_loss = F.binary_cross_entropy_with_logits(
+            logits, targets.float(), reduction="none"
+        )
         pt = torch.exp(-bce_loss)
         focal_loss = (self.alpha * (1 - pt) ** self.gamma * bce_loss).mean()
         return focal_loss
